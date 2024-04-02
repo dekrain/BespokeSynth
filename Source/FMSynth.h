@@ -80,7 +80,7 @@ private:
       height = 203;
    }
 
-   PolyphonyMgr mPolyMgr;
+   PolyphonicVoiceScheduler mPolyMgr;
    NoteInputBuffer mNoteInputBuffer;
    FMVoiceParams mVoiceParams;
    FloatSlider* mVolSlider{ nullptr };

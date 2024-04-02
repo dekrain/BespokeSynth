@@ -93,7 +93,7 @@ private:
    void DrawModule() override;
    void GetModuleDimensions(float& width, float& height) override;
 
-   PolyphonyMgr mPolyMgr;
+   PolyphonicVoiceScheduler mPolyMgr;
    NoteInputBuffer mNoteInputBuffer;
    SampleVoiceParams mVoiceParams;
    FloatSlider* mVolSlider{ nullptr };

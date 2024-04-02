@@ -417,37 +417,48 @@ IDrawableModule* ModuleContainer::FindModule(std::string name, bool fail)
    if (name == "")
       return nullptr;
 
+   std::vector<std::string> tokens = ofSplitString(name, "~");
+   auto nameIter = tokens.cbegin();
+   const auto namesEnd = tokens.cend();
+
+   //ModuleContainer* container = this;
+   IDrawableModule* parent = nullptr;
    for (int i = 0; i < mModules.size(); ++i)
    {
-      if (name == mModules[i]->Name())
-         return mModules[i];
-      std::vector<std::string> tokens = ofSplitString(name, "~");
-      if (mModules[i]->GetContainer())
+      if (*nameIter == mModules[i]->Name())
       {
-         if (tokens[0] == mModules[i]->Name())
-         {
-            ofStringReplace(name, tokens[0] + "~", "", true);
-            return mModules[i]->GetContainer()->FindModule(name, fail);
-         }
-      }
-      if (tokens.size() == 2 && tokens[0] == mModules[i]->Name())
-      {
-         IDrawableModule* child = nullptr;
-         try
-         {
-            child = mModules[i]->FindChild(tokens[1].c_str(), fail);
-         }
-         catch (UnknownModuleException& e)
-         {
-         }
-         if (child)
-            return child;
+         parent = mModules[i];
+         ++nameIter;
+         break;
       }
    }
 
-   if (fail)
+   while (nameIter != namesEnd && parent)
+   {
+      /*{
+         if (++nameIter == namesEnd)
+            return container->mModules[i];
+
+         if (auto* sub = container->mModules[i]->GetContainer())
+         {
+            container = sub;
+            continue;
+         }
+
+         container = nullptr;
+         break;
+      }*/
+
+      parent = parent->FindChild(nameIter->c_str(), fail);
+      ++nameIter;
+   }
+
+   if (nameIter != namesEnd)
+      parent = nullptr;
+
+   if (!parent && fail)
       throw UnknownModuleException(name);
-   return nullptr;
+   return parent;
 }
 
 IUIControl* ModuleContainer::FindUIControl(std::string path)

@@ -196,7 +196,7 @@ public:
          return mPatchCableSources[index];
       return nullptr;
    }
-   std::vector<PatchCableSource*> GetPatchCableSources() { return mPatchCableSources; }
+   const std::vector<PatchCableSource*>& GetPatchCableSources() { return mPatchCableSources; }
 
    static void FindClosestSides(float xThis, float yThis, float wThis, float hThis, float xThat, float yThat, float wThat, float hThat, float& startX, float& startY, float& endX, float& endY, bool sidesOnly = false);
 

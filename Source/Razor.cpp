@@ -295,15 +295,9 @@ bool IsPrime(int n)
 
 bool IsPow2(int n)
 {
-   while (n)
-   {
-      if (n == 1)
-         return true;
-      if (n % 2 && n != 1)
-         return false;
-      n >>= 1;
-   }
-   return false;
+   if (n == 0)
+      return false;
+   return (n & (n - 1)) == 0;
 }
 
 void Razor::CalcAmp()

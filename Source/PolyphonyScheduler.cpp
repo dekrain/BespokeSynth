@@ -1,6 +1,6 @@
 /**
     bespoke synth, a software modular synthesizer
-    Copyright (C) 2021 Ryan Challinor (contact: awwbees@gmail.com)
+    Copyright (C) 2024 Ryan Challinor (contact: awwbees@gmail.com)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,35 +16,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **/
 //
-//  PolyphonyMgr.cpp
-//  additiveSynth
+//  PolyphonyScheduler.cpp
 //
-//  Created by Ryan Challinor on 11/20/12.
+//  Created by Dawid Kraiński on 24 Mar 2024.
+//  Based on PolyphonyMgr.cpp by Ryan Challinor.
 //
-//
 
-#include "PolyphonyMgr.h"
-#include "IMidiVoice.h"
-#include "SynthGlobals.h"
-#include "Profiler.h"
+#include "PolyphonyScheduler.h"
 
-ChannelBuffer gMidiVoiceWorkChannelBuffer(kWorkBufferSize);
+#include "ModulationChain.h"
 
-PolyphonicVoiceScheduler::PolyphonicVoiceScheduler(IDrawableModule* owner)
-: mOwner(owner)
-{
-}
-
-void PolyphonicVoiceScheduler::Init(VoiceConstructor type, IVoiceParams* params)
-{
-   for (int i = 0; i < kNumVoices; ++i)
-   {
-      mVoices[i].mVoice = type(mOwner);
-      mVoices[i].mVoice->SetVoiceParams(params);
-   }
-}
-
-void PolyphonicVoiceScheduler::Start(double time, int pitch, float amount, int voiceIdx, ModulationParameters modulation)
+void PolyphonyScheduler::Start(double time, int pitch, float amount, int voiceIdx, ModulationParameters modulation)
 {
    assert(voiceIdx < kNumVoices);
 
@@ -86,34 +68,26 @@ void PolyphonicVoiceScheduler::Start(double time, int pitch, float amount, int v
       }
    }
 
-   assert(mVoices[voiceIdx].mVoice);
-   IMidiVoice& voice = *mVoices[voiceIdx].mVoice;
-   if (!voice.IsDone(time) && (!preserveVoice || modulation.pan != voice.GetPan()))
+   /*if (!voice.IsDone(time) && (!preserveVoice || modulation.pan != voice.GetPan()))
    {
       //ofLog() << "fading stolen voice " << voiceIdx << " at " << time;
-      mFadeOutWorkBuffer.Clear();
-      voice.Process(time, &mFadeOutWorkBuffer, mOversampling);
-      for (int i = 0; i < kVoiceFadeSamples; ++i)
-      {
-         float fade = 1 - (float(i) / kVoiceFadeSamples);
-         for (int ch = 0; ch < mFadeOutBuffer.NumActiveChannels(); ++ch)
-            mFadeOutBuffer.GetChannel(ch)[(i + mFadeOutBufferPos) % kVoiceFadeSamples] += mFadeOutWorkBuffer.GetChannel(ch)[i] * fade;
-      }
    }
    if (!preserveVoice)
-      voice.ClearVoice();
-   voice.SetPitch(pitch);
+      voice.ClearVoice();*/
+   /*voice.SetPitch(pitch);
    voice.SetModulators(modulation);
    voice.Start(time, amount);
-   voice.SetPan(modulation.pan);
+   voice.SetPan(modulation.pan);*/
    mLastVoice = voiceIdx;
 
    mVoices[voiceIdx].mPitch = pitch;
    mVoices[voiceIdx].mTime = time;
    mVoices[voiceIdx].mNoteOn = true;
+
+   mReceiver->StartVoice(voiceIdx, time, pitch, amount, modulation);
 }
 
-void PolyphonicVoiceScheduler::Stop(double time, int pitch, int voiceIdx)
+void PolyphonyScheduler::Stop(double time, int pitch, int voiceIdx)
 {
    if (voiceIdx == -1)
    {
@@ -129,58 +103,30 @@ void PolyphonicVoiceScheduler::Stop(double time, int pitch, int voiceIdx)
    }
    if (voiceIdx > -1 && mVoices[voiceIdx].mPitch == pitch && mVoices[voiceIdx].mNoteOn)
    {
-      mVoices[voiceIdx].mVoice->Stop(time);
+      //mVoices[voiceIdx].mVoice->Stop(time);
       mVoices[voiceIdx].mNoteOn = false;
+      mVoices[voiceIdx].mPitch = -1;
+
+      mReceiver->StopVoice(voiceIdx, mVoices[voiceIdx].mPitch, mVoices[voiceIdx].mTime);
    }
 }
 
-void PolyphonicVoiceScheduler::KillAll()
+void PolyphonyScheduler::KillAll()
 {
    for (int i = 0; i < kNumVoices; ++i)
    {
-      mVoices[i].mVoice->ClearVoice();
-      mVoices[i].mNoteOn = false;
+      //mVoices[i].mVoice->ClearVoice();
+      if (mVoices[i].mNoteOn)
+      {
+         mVoices[i].mNoteOn = false;
+         mVoices[i].mPitch = -1;
+
+         mReceiver->StopVoice(i, mVoices[i].mPitch, mVoices[i].mTime);
+      }
    }
 }
 
-void PolyphonicVoiceScheduler::Process(double time, ChannelBuffer* out, int bufferSize)
-{
-   PROFILER(PolyphonyMgr);
-
-   mFadeOutBuffer.SetNumActiveChannels(out->NumActiveChannels());
-   mFadeOutWorkBuffer.SetNumActiveChannels(out->NumActiveChannels());
-
-   float debugRef = 0;
-   for (int i = 0; i < mVoiceLimit; ++i)
-   {
-      if (mVoices[i].mPitch != -1)
-      {
-         mVoices[i].mVoice->Process(time, out, mOversampling);
-
-         float testSample = out->GetChannel(0)[0];
-         mVoices[i].mActivity = testSample - debugRef;
-
-         if (!mVoices[i].mNoteOn && mVoices[i].mVoice->IsDone(time))
-            mVoices[i].mPitch = -1;
-
-         debugRef = testSample;
-      }
-   }
-
-   for (int ch = 0; ch < out->NumActiveChannels(); ++ch)
-   {
-      for (int i = 0; i < bufferSize; ++i)
-      {
-         int fadeOutIdx = (i + mFadeOutBufferPos) % kVoiceFadeSamples;
-         out->GetChannel(ch)[i] += mFadeOutBuffer.GetChannel(ch)[fadeOutIdx];
-         mFadeOutBuffer.GetChannel(ch)[fadeOutIdx] = 0;
-      }
-   }
-
-   mFadeOutBufferPos += bufferSize;
-}
-
-void PolyphonicVoiceScheduler::DrawDebug(float x, float y)
+void PolyphonyScheduler::DrawDebug(float x, float y)
 {
    ofPushMatrix();
    ofPushStyle();
@@ -198,7 +144,6 @@ void PolyphonicVoiceScheduler::DrawDebug(float x, float y)
          outputLine += " unused";
       else
          outputLine += " used: " + ofToString(mVoices[i].mPitch) + (mVoices[i].mNoteOn ? " (note on)" : " (note off)");
-      outputLine += "   " + ofToString(mVoices[i].mActivity, 3);
       DrawTextNormal(outputLine, 0, i * 18);
    }
    ofPopStyle();

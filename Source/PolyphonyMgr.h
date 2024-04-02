@@ -50,10 +50,10 @@ struct VoiceInfo
 
 using VoiceConstructor = std::unique_ptr<IMidiVoice> (*)(IDrawableModule* owner);
 
-class PolyphonyMgr
+class PolyphonicVoiceScheduler
 {
 public:
-   PolyphonyMgr(IDrawableModule* owner);
+   PolyphonicVoiceScheduler(IDrawableModule* owner);
 
    void Init(VoiceConstructor type,
              IVoiceParams* mVoiceParams);

@@ -96,7 +96,7 @@ private:
 
    float mWidth{ 200 };
    float mHeight{ 20 };
-   PolyphonyMgr mPolyMgr;
+   PolyphonicVoiceScheduler mPolyMgr;
    NoteInputBuffer mNoteInputBuffer;
    OscillatorVoiceParams mVoiceParams;
    FloatSlider* mVolSlider{ nullptr };

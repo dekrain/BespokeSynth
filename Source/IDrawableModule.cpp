@@ -483,7 +483,7 @@ void IDrawableModule::DrawPatchCables(bool parentMinimized, bool inFront)
             }
          }
       }
-      if ((inFront && !shouldDrawInFront) || (!inFront && shouldDrawInFront))
+      if (inFront != shouldDrawInFront)
          continue;
 
       source->UpdatePosition(parentMinimized);

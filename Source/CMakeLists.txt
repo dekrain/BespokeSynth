@@ -501,8 +501,12 @@ target_sources(BespokeSynth PRIVATE
     PitchToValue.h
     PlaySequencer.cpp
     PlaySequencer.h
+    PolyphonicContainer.cpp
+    PolyphonicContainer.h
     PolyphonyMgr.cpp
     PolyphonyMgr.h
+    PolyphonyScheduler.cpp
+    PolyphonyScheduler.h
     Polyrhythms.cpp
     Polyrhythms.h
     Prefab.cpp
